@@ -3,14 +3,15 @@ import { getDatabase, ref, push, onValue, remove, set, off } from "https://www.g
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCrOjni5iJt64C2_YLRL1DOv7tfGAz7m9o",
-    authDomain: "kerta-58b48.firebaseapp.com",
-    databaseURL: "https://kerta-58b48-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "kerta-58b48",
-    storageBucket: "kerta-58b48.firebasestorage.app",
-    messagingSenderId: "595616991854",
-    appId: "1:595616991854:web:8263732c147b0e5b08347f"
-  };
+  apiKey: "AIzaSyCrPf5xpiJ06F9QuLGbuaBVruD5I6ytkG4",
+  authDomain: "dz-finance-tracker.firebaseapp.com",
+  databaseURL: "https://dz-finance-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dz-finance-tracker",
+  storageBucket: "dz-finance-tracker.firebasestorage.app",
+  messagingSenderId: "553204334545",
+  appId: "1:553204334545:web:b1022fdeabe33116ab6af0"
+};
+
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getDatabase(firebaseApp);
