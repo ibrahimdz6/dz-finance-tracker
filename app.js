@@ -102,13 +102,13 @@ function mulaiListeners() {
       transaksi.unshift({ _key: child.key, ...child.val() });
     });
     render();
-    renderDashboard();
     renderBudget();
     renderInsight();
     renderGrafikSaldoHarian();
     renderGrafikPengeluaranHarian();
     renderGrafikDonut();
     renderRekeningList();
+    renderDashboard();
     cekDanKirimNotifikasi();
   });
 
