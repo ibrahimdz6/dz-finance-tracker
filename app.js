@@ -32,8 +32,6 @@ function updateRefs() {
 
 let transaksi = [];
 let tipeAktif = 'masuk';
-let grafikInstance = null;
-let grafikSaldoInstance = null;
 let grafikSaldoHarianInstance = null;
 let grafikPengeluaranHarianInstance = null;
 let grafikDonutInstance = null;
@@ -167,7 +165,6 @@ function gotoTab(tabId, el) {
   const filterBar = document.getElementById('dashboard-filter-bar');
   if (filterBar) filterBar.style.display = tabId === 'ringkasan' ? 'flex' : 'none';
   if (tabId === 'ringkasan') renderDashboard();
-  if (tabId === 'grafik') renderGrafikAll();
 }
 
 // ======= FORMAT =======
@@ -843,29 +840,6 @@ function renderBudget() {
   }).join('');
 }
 
-// ======= GRAFIK =======
-function renderGrafikAll() {
-  const sumber = transaksi;
-  const dataKategori = {};
-  sumber.filter(t => t.kategori !== 'Transfer').forEach(t => {
-    if (!dataKategori[t.kategori]) dataKategori[t.kategori] = { masuk: 0, keluar: 0 };
-    dataKategori[t.kategori][t.tipe] += t.jumlah;
-  });
-  const labels = Object.keys(dataKategori);
-  if (grafikInstance) grafikInstance.destroy();
-  if (labels.length > 0) {
-    const ctx = document.getElementById('grafikKategori').getContext('2d');
-    grafikInstance = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Pemasukan', data: labels.map(k => dataKategori[k].masuk), backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false }, { label: 'Pengeluaran', data: labels.map(k => dataKategori[k].keluar), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }] }, options: { responsive: true, plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: Rp ${c.raw.toLocaleString('id-ID')}` } } }, scales: { y: { ticks: { callback: v => 'Rp ' + v.toLocaleString('id-ID') } } } } });
-  }
-  const aktif = metodeList.filter(m => sumber.some(t => t.metode === m));
-  const masukAktif = aktif.map(m => sumber.filter(t => t.tipe === 'masuk' && t.metode === m && t.kategori !== 'Transfer').reduce((s,t) => s+t.jumlah, 0));
-  const keluarAktif = aktif.map(m => sumber.filter(t => t.tipe === 'keluar' && t.metode === m && t.kategori !== 'Transfer').reduce((s,t) => s+t.jumlah, 0));
-  if (grafikSaldoInstance) grafikSaldoInstance.destroy();
-  if (aktif.length > 0) {
-    const ctx2 = document.getElementById('grafikSaldo').getContext('2d');
-    grafikSaldoInstance = new Chart(ctx2, { type: 'bar', data: { labels: aktif, datasets: [{ label: 'Pemasukan', data: masukAktif, backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false }, { label: 'Pengeluaran', data: keluarAktif, backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }] }, options: { responsive: true, plugins: { legend: { display: true, position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: Rp ${c.raw.toLocaleString('id-ID')}` } } }, scales: { y: { ticks: { callback: v => 'Rp ' + v.toLocaleString('id-ID') } } } } });
-  }
-}
 
 function renderGrafikSaldoHarian() {
   const ctx = document.getElementById('grafikSaldoHarian');
@@ -1506,6 +1480,24 @@ document.addEventListener('click', (e) => {
   if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) menu.style.display = 'none';
 });
 
+function toggleNavMobile() {
+  const nav = document.getElementById('nav-tabs');
+  if (nav) nav.classList.toggle('nav-tabs-open');
+}
+
+function tutupNavMobile() {
+  const nav = document.getElementById('nav-tabs');
+  if (nav) nav.classList.remove('nav-tabs-open');
+}
+
+document.addEventListener('click', (e) => {
+  const nav = document.getElementById('nav-tabs');
+  const btn = document.getElementById('btn-hamburger');
+  if (nav && btn && !nav.contains(e.target) && !btn.contains(e.target)) {
+    nav.classList.remove('nav-tabs-open');
+  }
+});
+
 // ======= AUTH FUNCTIONS =======
 function loginUser() {
   const email = document.getElementById('login-email').value.trim();
@@ -2135,3 +2127,6 @@ window.setFilterDashboard = setFilterDashboard;
 window.renderDashboard = renderDashboard;
 window.renderGrafikPengeluaranHarianPeriode = renderGrafikPengeluaranHarianPeriode;
 window.renderGrafikSaldoHarianPeriode = renderGrafikSaldoHarianPeriode;
+window.toggleMenu = toggleMenu;
+window.toggleNavMobile = toggleNavMobile;
+window.tutupNavMobile = tutupNavMobile;
