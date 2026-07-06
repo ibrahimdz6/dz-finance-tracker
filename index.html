@@ -23,24 +23,45 @@
 @media (max-width: 768px) {
   .topbar {
     position: relative;
+    display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    row-gap: 8px;
   }
   .btn-hamburger {
     display: inline-block;
+    order: 1;
+  }
+  .logo {
+    order: 2;
+  }
+  .topbar-actions {
+    order: 3;
+    margin-left: auto;
+  }
+  #dashboard-filter-bar {
+    order: 4;
+    width: 100%;
+    flex-basis: 100%;
+    justify-content: center;
+    padding-top: 8px;
+    border-top: 1px solid #f1f5f9;
   }
   .nav-tabs {
     display: none;
     position: absolute;
-    top: 56px;
+    top: 100%;
     left: 0;
     right: 0;
     background: white;
     flex-direction: column;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
     border-bottom: 1px solid #e2e8f0;
     z-index: 500;
     padding: 8px;
     border-radius: 0 0 12px 12px;
+    max-height: 70vh;
+    overflow-y: auto;
   }
   .nav-tabs.nav-tabs-open {
     display: flex;
@@ -50,12 +71,6 @@
     text-align: left;
     padding: 12px 14px;
     border-radius: 8px;
-  }
-  #dashboard-filter-bar {
-    order: 3;
-    width: 100%;
-    margin-top: 8px;
-    justify-content: flex-start;
   }
 }
 </style>
