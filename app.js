@@ -157,7 +157,22 @@ function hentikanListeners() {
 }
 
 // ======= TAB =======
+function resetSemuaFormEdit() {
+  const btnTx = document.getElementById('btn-simpan-transaksi');
+  if (btnTx) { btnTx.textContent = '+ Simpan Transaksi'; btnTx.onclick = tambahTransaksi; }
+
+  const btnBudget = document.getElementById('btn-simpan-budget');
+  if (btnBudget) { btnBudget.textContent = 'Set Anggaran'; btnBudget.onclick = simpanBudget; }
+
+  const btnHP = document.getElementById('btn-simpan-hp');
+  if (btnHP) { btnHP.textContent = '+ Tambah'; btnHP.onclick = tambahHP; }
+
+  const btnTarget = document.getElementById('btn-simpan-target');
+  if (btnTarget) { btnTarget.textContent = '+ Tambah Target'; btnTarget.onclick = tambahTarget; }
+}
+
 function gotoTab(tabId, el) {
+  resetSemuaFormEdit();
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + tabId).classList.add('active');
@@ -653,7 +668,6 @@ function render() {
 const saldo = totalSaldoAwal + allMasuk - allKeluar;
 
   document.getElementById('total-masuk').textContent = formatRupiah(totalMasuk);
-  document.getElementById('total-masuk').textContent = formatRupiah(totalMasuk);
   document.getElementById('total-keluar').textContent = formatRupiah(totalKeluar);
   document.getElementById('saldo').textContent = formatRupiah(Math.abs(saldo));
   document.getElementById('saldo').style.color = saldo < 0 ? '#dc2626' : '#1e293b';
@@ -754,6 +768,8 @@ const saldo = totalSaldoAwal + allMasuk - allKeluar;
       `;
     }).join('');
   }
+
+  renderDashboard();
 }
 
 // ======= BUDGET =======
@@ -784,6 +800,9 @@ function updateBudget(katLama) {
   const katBaru = document.getElementById('budget-kat').value;
   const nominal = parseFloat(document.getElementById('budget-nominal').value);
   if (!nominal || nominal <= 0) { alert('Isi nominal anggaran!'); return; }
+  if (katBaru !== katLama && budget[katBaru] !== undefined) {
+    if (!confirm(`Kategori "${katBaru}" sudah punya anggaran (${formatRupiah(budget[katBaru])}). Timpa dengan nominal baru?`)) return;
+  }
   if (katBaru !== katLama) {
     remove(ref(db, `budget/${katLama}`));
   }
@@ -1017,6 +1036,9 @@ function simpanCicilan() {
 
   const hp = hpData.find(h => h._key === cicilanTargetKey);
   if (!hp) return;
+
+  const sisaSaatIni = hp.jumlah - (hp.terbayar || 0);
+  if (jumlah > sisaSaatIni) { alert(`Jumlah bayar (${formatRupiah(jumlah)}) melebihi sisa (${formatRupiah(sisaSaatIni)})!`); return; }
 
   const terbayarBaru = (hp.terbayar || 0) + jumlah;
   set(ref(db, `hutangpiutang/${cicilanTargetKey}/terbayar`), terbayarBaru);
