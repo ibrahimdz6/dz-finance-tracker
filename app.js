@@ -17,6 +17,74 @@ const db = getDatabase(firebaseApp);
 const auth = getAuth(firebaseApp);
 
 let currentUser = null;
+let demoMode = false;
+
+const dataDemo = {
+  transaksi: [
+    { id: 1, tipe: 'masuk', keterangan: 'Gaji Bulanan', jumlah: 6600000, kategori: 'Gaji', tanggal: '2026-07-01', metode: 'BNI' },
+    { id: 2, tipe: 'keluar', keterangan: 'Belanja Bulanan', jumlah: 850000, kategori: 'Sembako', tanggal: '2026-07-03', metode: 'Cash' },
+    { id: 3, tipe: 'keluar', keterangan: 'Bayar Listrik', jumlah: 420000, kategori: 'Listrik', tanggal: '2026-07-05', metode: 'DANA' },
+    { id: 4, tipe: 'keluar', keterangan: 'Makan di Luar', jumlah: 175000, kategori: 'Makan', tanggal: '2026-07-08', metode: 'GoPay' },
+    { id: 5, tipe: 'keluar', keterangan: 'Bensin', jumlah: 300000, kategori: 'BBM', tanggal: '2026-07-10', metode: 'Cash' },
+    { id: 6, tipe: 'keluar', keterangan: 'Cicilan Motor', jumlah: 900000, kategori: 'Hutang', tanggal: '2026-07-12', metode: 'BNI' },
+    { id: 7, tipe: 'masuk', keterangan: 'Jual Barang Bekas', jumlah: 250000, kategori: 'Usaha', tanggal: '2026-07-14', metode: 'OVO' },
+    { id: 8, tipe: 'keluar', keterangan: 'Sekolah Anak', jumlah: 500000, kategori: 'Sekolah Anak', tanggal: '2026-07-15', metode: 'BSI' }
+  ],
+  budget: { 'Sembako': 1200000, 'Makan': 700000, 'Transport': 400000, 'Hiburan': 300000 },
+  hpData: [
+    { nama: 'Cicilan Motor', jumlah: 12000000, tanggal: '2026-01-10', keterangan: 'Cicilan motor 12 bulan', tipe: 'hutang', terbayar: 5400000 }
+  ],
+  targetData: [
+    { nama: 'Dana Darurat', jumlah: 10000000, emoji: '🛟', deadline: '2026-12-31', terkumpul: 3500000, createdAt: Date.now() },
+    { nama: 'Umroh Keluarga', jumlah: 30000000, emoji: '🕌', deadline: '2027-06-30', terkumpul: 8000000, createdAt: Date.now() }
+  ],
+  saldoAwal: { Cash: 1500000, BNI: 2000000, DANA: 500000 }
+};
+
+function mulaiDemo() {
+  demoMode = true;
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('halaman-login').style.display = 'none';
+  document.getElementById('aplikasi-utama').style.display = 'block';
+
+  transaksi = JSON.parse(JSON.stringify(dataDemo.transaksi));
+  budget = { ...dataDemo.budget };
+  hpData = JSON.parse(JSON.stringify(dataDemo.hpData));
+  targetData = JSON.parse(JSON.stringify(dataDemo.targetData));
+  saldoAwal = { ...dataDemo.saldoAwal };
+  katKeluar = [...defaultKatKeluar];
+  katMasuk = [...defaultKatMasuk];
+  bankList = [...defaultBank];
+
+  const tglInput = document.getElementById('tanggal');
+  if (tglInput) tglInput.valueAsDate = new Date();
+  const filterBar = document.getElementById('dashboard-filter-bar');
+  if (filterBar) filterBar.style.display = 'flex';
+
+  render();
+  renderBudget();
+  renderInsight();
+  renderGrafikSaldoHarian();
+  renderGrafikPengeluaranHarian();
+  renderGrafikDonut();
+  renderRekeningList();
+  renderDashboard();
+  renderHP();
+  renderTarget();
+  renderPengaturan();
+  tampilkanBannerDemo();
+}
+
+function tampilkanBannerDemo() {
+  if (document.getElementById('banner-demo')) return;
+  const bar = document.createElement('div');
+  bar.id = 'banner-demo';
+  bar.style.cssText = 'position:sticky;top:0;z-index:200;background:#f59e0b;color:#1e293b;text-align:center;padding:10px;font-size:13px;font-weight:600;font-family:Inter,sans-serif';
+  bar.innerHTML = '🔍 Mode Demo — data contoh, perubahan tidak tersimpan. <a href="http://lynk.id/kertaharta/g1l7dr1eggm9" style="color:#4f46e5;text-decoration:underline">Beli sekarang →</a>';
+  document.body.prepend(bar);
+}
+
+window.mulaiDemo = mulaiDemo;
 
 // Referensi database
 let transaksiRef, budgetRef, hpRef, targetRef;
@@ -76,9 +144,13 @@ onAuthStateChanged(auth, (user) => {
 if (filterBar) filterBar.style.display = 'flex';
   } else {
     currentUser = null;
-    document.getElementById('halaman-login').style.display = 'flex';
-    document.getElementById('aplikasi-utama').style.display = 'none';
     hentikanListeners();
+    if (new URLSearchParams(location.search).get('demo') === '1') {
+      mulaiDemo();
+    } else {
+      document.getElementById('halaman-login').style.display = 'flex';
+      document.getElementById('aplikasi-utama').style.display = 'none';
+    }
   }
 });
 
@@ -173,6 +245,8 @@ function resetSemuaFormEdit() {
 
 function gotoTab(tabId, el) {
   resetSemuaFormEdit();
+  document.getElementById('fab-menu')?.classList.remove('show');
+  document.getElementById('fab-btn')?.classList.remove('open');
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + tabId).classList.add('active');
@@ -185,6 +259,31 @@ function gotoTab(tabId, el) {
 // ======= FORMAT =======
 function formatRupiah(angka) {
   return 'Rp ' + Math.round(angka).toLocaleString('id-ID');
+}
+
+let saldoTersembunyi = false;
+function toggleSaldo() {
+  saldoTersembunyi = !saldoTersembunyi;
+  const el = document.getElementById('saldo');
+  const btn = document.getElementById('btn-eye-saldo');
+  if (saldoTersembunyi) { el.dataset.asli = el.textContent; el.textContent = 'Rp ••••••'; btn.textContent = '🙈'; }
+  else { el.textContent = el.dataset.asli || el.textContent; btn.textContent = '👁'; }
+}
+
+function updateGreeting() {
+  const jam = new Date().getHours();
+  const teks = jam < 11 ? 'Selamat pagi 👋' : jam < 15 ? 'Selamat siang 👋' : jam < 18 ? 'Selamat sore 👋' : 'Selamat malam 👋';
+  const el = document.getElementById('greeting-text');
+  if (el) el.textContent = teks;
+}
+updateGreeting();
+
+function updateHeroStatus(totalAnggaran, totalTerpakai) {
+  const badge = document.getElementById('hero-status-badge');
+  if (!badge) return;
+  const persen = totalAnggaran > 0 ? (totalTerpakai / totalAnggaran) * 100 : 0;
+  if (persen >= 100) { badge.textContent = '⚠ Waspada'; badge.className = 'hero-status-badge waspada'; }
+  else { badge.textContent = '✓ Aman'; badge.className = 'hero-status-badge'; }
 }
 
 // ======= FILTER =======
@@ -367,15 +466,17 @@ function renderDashboard() {
       const color = t.tipe === 'masuk' ? '#16a34a' : '#dc2626';
       const bgColor = t.tipe === 'masuk' ? '#dcfce7' : '#fee2e2';
       const ikon = ikonKategori[t.kategori] || '📦';
-      const tgl = new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-      return `<li style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc">
-        <div style="width:38px;height:38px;border-radius:10px;background:${bgColor};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${ikon}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:500;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.keterangan}</div>
-          <div style="font-size:11px;color:#94a3b8">${t.kategori} · ${t.metode} · ${tgl}</div>
-        </div>
-        <div style="font-size:13px;font-weight:600;color:${color};flex-shrink:0">${sign}${formatRupiah(t.jumlah)}</div>
-      </li>`;
+      const tgl = new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      return `
+        <li class="tx-mini-row" style="list-style:none">
+          <div class="tx-mini-icon" style="background:${bgColor}">${ikon}</div>
+          <div class="tx-mini-body">
+            <div class="tx-mini-nama">${t.keterangan}</div>
+            <div class="tx-mini-waktu">${tgl}</div>
+          </div>
+          <div class="tx-mini-nominal" style="color:${color}">${sign}${formatRupiah(t.jumlah)}</div>
+        </li>
+      `;
     }).join('');
   }
 
@@ -443,6 +544,7 @@ function renderGrafikPengeluaranHarianPeriode(txFiltered, periode, tipe) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + formatRupiah(c.raw) } } },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 10 } },
@@ -505,6 +607,7 @@ function renderGrafikSaldoHarianPeriode(txFiltered, periode, tipe) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + formatRupiah(c.raw) } } },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 10 } },
@@ -756,15 +859,15 @@ const saldo = totalSaldoAwal + allMasuk - allKeluar;
       const color = t.tipe === 'masuk' ? '#16a34a' : '#dc2626';
       const bgColor = t.tipe === 'masuk' ? '#dcfce7' : '#fee2e2';
       const ikon = ikonKategori[t.kategori] || '📦';
-      const tgl = new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      const tgl = new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
       return `
-        <li style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc">
-          <div style="width:38px;height:38px;border-radius:10px;background:${bgColor};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${ikon}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.keterangan}</div>
-            <div style="font-size:11px;color:#94a3b8">${t.kategori} · ${t.metode} · ${tgl}</div>
+        <li class="tx-mini-row" style="list-style:none">
+          <div class="tx-mini-icon" style="background:${bgColor}">${ikon}</div>
+          <div class="tx-mini-body">
+            <div class="tx-mini-nama">${t.keterangan}</div>
+            <div class="tx-mini-waktu">${tgl}</div>
           </div>
-          <div style="font-size:13px;font-weight:600;color:${color};flex-shrink:0">${sign}${formatRupiah(t.jumlah)}</div>
+          <div class="tx-mini-nominal" style="color:${color}">${sign}${formatRupiah(t.jumlah)}</div>
         </li>
       `;
     }).join('');
@@ -831,16 +934,28 @@ function renderBudget() {
   if (elAnggaranTab) elAnggaranTab.textContent = formatRupiah(totalAnggaran);
   if (elSisaTab) { elSisaTab.textContent = formatRupiah(Math.abs(totalSisa)); elSisaTab.style.color = totalSisa < 0 ? '#dc2626' : '#1e293b'; }
 
+  const ikonBudget = { BBM:'⛽', Makan:'🍽️', Transport:'🚗', Sembako:'🛒', Listrik:'💡', Hiburan:'🎬', Belanja:'🛍️' };
   const budgetMini = document.getElementById('budget-mini');
   if (budgetMini) {
     if (keys.length === 0) { budgetMini.innerHTML = '<p style="font-size:13px;color:#94a3b8">Belum ada anggaran.</p>'; }
     else {
-      budgetMini.innerHTML = keys.map(kat => {
+      const dataBudget = keys.map(kat => {
         const batas = budget[kat];
         const terpakai = transaksi.filter(t => t.tipe === 'keluar' && t.kategori === kat && t.tanggal.slice(0, 7) === bulanIni).reduce((s, t) => s + t.jumlah, 0);
-        const persen = Math.min((terpakai / batas) * 100, 100).toFixed(0);
-        const warna = terpakai > batas ? '#ef4444' : persen >= 80 ? '#f59e0b' : '#10b981';
-        return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:500">${kat}</span><span style="color:#94a3b8">${formatRupiah(terpakai)} / ${formatRupiah(batas)}</span></div><div style="height:6px;background:#f1f5f9;border-radius:4px;overflow:hidden"><div style="height:100%;width:${persen}%;background:${warna};border-radius:4px;transition:width 0.4s"></div></div></div>`;
+        const persen = Math.min((terpakai / batas) * 100, 100);
+        return { kat, persen };
+      }).sort((a, b) => b.persen - a.persen).slice(0, 2);
+      budgetMini.innerHTML = dataBudget.map(({ kat, persen }) => {
+        const warna = persen >= 100 ? '#EF4444' : persen >= 80 ? '#F59E0B' : '#10B981';
+        const bg = persen >= 100 ? '#FEF2F2' : persen >= 80 ? '#FEF3C7' : '#ECFDF5';
+        return `<div class="perhatian-row">
+          <div class="perhatian-icon" style="background:${bg}">${ikonBudget[kat] || '📦'}</div>
+          <div class="perhatian-body">
+            <div class="perhatian-nama">${kat}</div>
+            <div class="perhatian-track"><div class="perhatian-fill" style="width:${persen.toFixed(0)}%;background:${warna}"></div></div>
+          </div>
+          <span class="perhatian-pct" style="background:${bg};color:${warna}">${persen.toFixed(0)}%</span>
+        </div>`;
       }).join('');
     }
   }
@@ -893,7 +1008,7 @@ function renderGrafikSaldoHarian() {
   }
   if (grafikSaldoHarianInstance) grafikSaldoHarianInstance.destroy();
   const labels = hari30.map(tgl => { const d = new Date(tgl); return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); });
-  grafikSaldoHarianInstance = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ data: saldoPerHari, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, fill: true, tension: 0.4 }] }, options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + formatRupiah(c.raw) } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 6 } }, y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: v => v >= 1000000 ? (v/1000000).toFixed(1) + ' jt' : v >= 1000 ? (v/1000).toFixed(0) + ' rb' : v } } } } });
+  grafikSaldoHarianInstance = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ data: saldoPerHari, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + formatRupiah(c.raw) } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 6 } }, y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: v => v >= 1000000 ? (v/1000000).toFixed(1) + ' jt' : v >= 1000 ? (v/1000).toFixed(0) + ' rb' : v } } } } });
 }
 
 function renderGrafikPengeluaranHarian() {
@@ -904,7 +1019,7 @@ function renderGrafikPengeluaranHarian() {
   const dataPerHari = hari30.map(tgl => transaksi.filter(t => t.tanggal === tgl && t.tipe === 'keluar' && t.kategori !== 'Transfer').reduce((s,t) => s+t.jumlah, 0));
   const labels = hari30.map(tgl => { const d = new Date(tgl); return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); });
   if (grafikPengeluaranHarianInstance) grafikPengeluaranHarianInstance.destroy();
-  grafikPengeluaranHarianInstance = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ data: dataPerHari, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#6366f1', pointHoverRadius: 5, fill: true, tension: 0.4 }] }, options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + formatRupiah(c.raw) } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 8 } }, y: { grid: { color: '#f8fafc' }, ticks: { font: { size: 10 }, callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'rb' : v } } } } });
+  grafikPengeluaranHarianInstance = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ data: dataPerHari, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#6366f1', pointHoverRadius: 5, fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + formatRupiah(c.raw) } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 8 } }, y: { grid: { color: '#f8fafc' }, ticks: { font: { size: 10 }, callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'rb' : v } } } } });
 }
 
 function renderGrafikDonut() {
@@ -1435,8 +1550,16 @@ const txBulanLalu = transaksi.filter(t => t.tanggal.slice(0, 7) === bulanLalu);
   });
   const totalHutang = hpData.filter(h => h.tipe === 'hutang').reduce((s,h) => s + (h.jumlah - (h.terbayar||0)), 0);
   if (totalHutang > 0) insights.push({ icon: '💸', warna: '#ef4444', teks: `Masih ada hutang sebesar <strong>${formatRupiah(totalHutang)}</strong> yang belum lunas.` });
-  if (insights.length === 0) { container.innerHTML = '<p style="font-size:13px;color:#94a3b8;text-align:center;padding:12px">Belum ada insight.</p>'; return; }
-  container.innerHTML = insights.map(i => `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#f8fafc;border-radius:10px;margin-bottom:8px;border-left:3px solid ${i.warna}"><span style="font-size:18px;flex-shrink:0">${i.icon}</span><p style="font-size:13px;color:#1e293b;line-height:1.5">${i.teks}</p></div>`).join('');
+  if (insights.length === 0) { container.innerHTML = ''; return; }
+  const top = insights[0];
+  const rest = insights.slice(1);
+  const restHTML = rest.map(i => `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-top:1px solid var(--border)"><span style="font-size:16px;flex-shrink:0">${i.icon}</span><p style="font-size:13px;color:var(--text-primary);line-height:1.5;margin:0">${i.teks}</p></div>`).join('');
+  container.innerHTML = `<div class="insight-banner" onclick="toggleInsightAll()">
+    <div class="ib-icon">💡</div>
+    <div class="ib-body"><span class="ib-title">Insight Hari Ini</span>${top.teks}</div>
+    <span class="ib-arrow" id="insight-arrow">${rest.length > 0 ? '›' : ''}</span>
+  </div>
+  ${rest.length > 0 ? `<div id="insight-extra" style="display:none;background:var(--card);border-radius:0 0 var(--radius-card) var(--radius-card);margin-top:-8px;padding-top:8px;box-shadow:var(--shadow-soft)">${restHTML}</div>` : ''}`;
 }
 
 // ======= NOTIFIKASI =======
@@ -1524,24 +1647,6 @@ document.addEventListener('click', (e) => {
   const menu = document.getElementById('dropdown-menu');
   const btn = document.querySelector('.btn-menu');
   if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) menu.style.display = 'none';
-});
-
-function toggleNavMobile() {
-  const nav = document.getElementById('nav-tabs');
-  if (nav) nav.classList.toggle('nav-tabs-open');
-}
-
-function tutupNavMobile() {
-  const nav = document.getElementById('nav-tabs');
-  if (nav) nav.classList.remove('nav-tabs-open');
-}
-
-document.addEventListener('click', (e) => {
-  const nav = document.getElementById('nav-tabs');
-  const btn = document.getElementById('btn-hamburger');
-  if (nav && btn && !nav.contains(e.target) && !btn.contains(e.target)) {
-    nav.classList.remove('nav-tabs-open');
-  }
 });
 
 // ======= AUTH FUNCTIONS =======
@@ -2121,6 +2226,15 @@ function exportExcel() {
   toggleMenu();
 }
 
+function toggleInsightAll() {
+  const extra = document.getElementById('insight-extra');
+  const arrow = document.getElementById('insight-arrow');
+  if (!extra) return;
+  const open = extra.style.display !== 'none';
+  extra.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '›' : '⌄';
+}
+
 // ======= EXPOSE =======
 window.gotoTab = gotoTab;
 window.setType = setType;
@@ -2174,5 +2288,5 @@ window.renderDashboard = renderDashboard;
 window.renderGrafikPengeluaranHarianPeriode = renderGrafikPengeluaranHarianPeriode;
 window.renderGrafikSaldoHarianPeriode = renderGrafikSaldoHarianPeriode;
 window.toggleMenu = toggleMenu;
-window.toggleNavMobile = toggleNavMobile;
-window.tutupNavMobile = tutupNavMobile;
+window.toggleSaldo = toggleSaldo;
+window.toggleInsightAll = toggleInsightAll;
